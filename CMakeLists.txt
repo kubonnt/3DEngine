@@ -23,11 +23,23 @@ add_subdirectory(deps/glfw)
 include_directories(deps/glfw/include)
 
 # Add GLAD
-add_library(glad deps/glad/src/glad.c "src/engine/ecs/include/Entity.h" "src/engine/ecs/include/Component.h" "src/engine/ecs/include/System.h" "src/engine/ecs/include/ECSManager.h" "src/engine/ecs/src/Entity.cpp" "src/engine/ecs/src/Component.cpp" "src/engine/ecs/src/System.cpp" "src/engine/ecs/src/ECSManager.cpp" "src/engine/renderer/include/Renderer.h" "src/engine/renderer/include/OpenGLRenderer.h" "src/engine/renderer/src/Renderer.cpp" "src/engine/renderer/src/OpenGLRenderer.cpp" "src/engine/core/include/Window.h" "src/engine/core/src/Window.cpp" "src/engine/renderer/include/MeshRenderer.h" "src/engine/renderer/src/MeshRenderer.cpp" "src/engine/renderer/include/RenderSystem.h")
-target_include_directories(glad PUBLIC deps/glad/include)
+add_library(glad deps/glad/src/glad.c "src/engine/ecs/include/Entity.h" "src/engine/ecs/include/Component.h" "src/engine/ecs/include/System.h" "src/engine/ecs/include/ECSManager.h" "src/engine/ecs/src/Entity.cpp" "src/engine/ecs/src/Component.cpp" "src/engine/ecs/src/System.cpp" "src/engine/ecs/src/ECSManager.cpp" "src/engine/renderer/include/Renderer.h" "src/engine/renderer/include/OpenGLRenderer.h" "src/engine/renderer/src/Renderer.cpp" "src/engine/renderer/src/OpenGLRenderer.cpp" "src/engine/core/include/Window.h" "src/engine/core/src/Window.cpp" "src/engine/renderer/include/MeshRenderer.h" "src/engine/renderer/src/MeshRenderer.cpp" "src/engine/renderer/include/RenderSystem.h" "src/engine/renderer/include/Shader.h" "src/engine/renderer/src/Shader.cpp")
+target_include_directories(glad PUBLIC deps/glad/include glm)
+
+# Fetch FLM using CMake FetchContent
+# FetchContent_Declare(
+#   glm
+#   GIT_REPOSITORY https://github.com/g-truc/glm.git
+#   GIT_TAG 0.9.9.8 # or use a specific version, e.g., 0.9.9.8
+# )
+# FetchContent_MakeAvailable(glm)
+
+# Add GLM manually
+#add_subdirectory(deps/glm)
+include_directories(deps/glm)
 
 # Add source to this project's executable.
-add_executable(3DEngine src/main.cpp "src/engine/ecs/include/Entity.h" "src/engine/ecs/include/Component.h" "src/engine/ecs/include/System.h" "src/engine/ecs/include/ECSManager.h" "src/engine/ecs/src/Entity.cpp" "src/engine/ecs/src/Component.cpp" "src/engine/ecs/src/System.cpp" "src/engine/ecs/src/ECSManager.cpp" "src/engine/renderer/include/Renderer.h" "src/engine/renderer/include/OpenGLRenderer.h" "src/engine/renderer/src/Renderer.cpp" "src/engine/renderer/src/OpenGLRenderer.cpp" "src/engine/core/include/Window.h" "src/engine/core/src/Window.cpp" "src/engine/renderer/include/MeshRenderer.h" "src/engine/renderer/src/MeshRenderer.cpp" "src/engine/renderer/include/RenderSystem.h")
+add_executable(3DEngine src/main.cpp "src/engine/ecs/include/Entity.h" "src/engine/ecs/include/Component.h" "src/engine/ecs/include/System.h" "src/engine/ecs/include/ECSManager.h" "src/engine/ecs/src/Entity.cpp" "src/engine/ecs/src/Component.cpp" "src/engine/ecs/src/System.cpp" "src/engine/ecs/src/ECSManager.cpp" "src/engine/renderer/include/Renderer.h" "src/engine/renderer/include/OpenGLRenderer.h" "src/engine/renderer/src/Renderer.cpp" "src/engine/renderer/src/OpenGLRenderer.cpp" "src/engine/core/include/Window.h" "src/engine/core/src/Window.cpp" "src/engine/renderer/include/MeshRenderer.h" "src/engine/renderer/src/MeshRenderer.cpp" "src/engine/renderer/include/RenderSystem.h" "src/engine/renderer/include/Shader.h" "src/engine/renderer/src/Shader.cpp")
 target_link_libraries(3DEngine glfw glad)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
