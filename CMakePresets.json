@@ -1,0 +1,52 @@
+﻿[
+  {
+    "name": "Windows-Debug",
+    "generator": "Ninja",
+    "configurationType": "Debug",
+    "inheritEnvironments": [ "msvc_x64" ],
+    "buildRoot": "${projectDir}/out/build/Windows-Debug",
+    "installRoot": "${projectDir}/out/install/Windows-Debug",
+    "cmakeCommandArgs": "",
+    "buildCommandArgs": "",
+    "ctestCommandArgs": "",
+    "variables": {}
+  },
+  {
+    "name": "Windows-Release",
+    "generator": "Ninja",
+    "configurationType": "Release",
+    "inheritEnvironments": [ "msvc_x64" ],
+    "buildRoot": "${projectDir}/out/build/Windows-Release",
+    "installRoot": "${projectDir}/out/install/Windows-Release",
+    "cmakeCommandArgs": "",
+    "buildCommandArgs": "",
+    "ctestCommandArgs": "",
+    "variables": {}
+  },
+  {
+    "name": "Linux-Debug",
+    "generator": "Ninja",
+    "configurationType": "Debug",
+    "inheritEnvironments": [ "Linux" ],
+    "buildRoot": "/mnt/c/path/to/your/project/out/build/Linux-Debug",
+    "installRoot": "/mnt/c/path/to/your/project/out/install/Linux-Debug",
+    "remoteMachineName": "WSL-Ubuntu-22.04",
+    "cmakeCommandArgs": "-DGLFW_BUILD_WAYLAND=OFF -DGLFW_BUILD_X11=ON",
+    "buildCommandArgs": "",
+    "ctestCommandArgs": "",
+    "variables": {}
+  },
+  {
+    "name": "Linux-Release",
+    "generator": "Ninja",
+    "configurationType": "Release",
+    "inheritEnvironments": [ "Linux" ],
+    "buildRoot": "/mnt/c/path/to/your/project/out/build/Linux-Release",
+    "installRoot": "/mnt/c/path/to/your/project/out/install/Linux-Release",
+    "remoteMachineName": "WSL-Ubuntu-22.04",
+    "cmakeCommandArgs": "-DGLFW_BUILD_WAYLAND=OFF -DGLFW_BUILD_X11=ON",
+    "buildCommandArgs": "",
+    "ctestCommandArgs": "",
+    "variables": {}
+  }
+]

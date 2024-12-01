@@ -1,0 +1,45 @@
+# Ignore build outputs
+/out/build/
+/out/install/
+
+# Ignore generated files by CMake
+/CMakeFiles/
+/CMakeCache.txt
+/cmake_install.cmake
+/*.dir
+
+# Ignore Visual Studio specific files
+/.vs/
+/*.sln
+/*.vcxproj
+/*.vcxproj.filters
+/*.vcxproj.user
+
+# Ignore GLFW build files
+/deps/glfw/build/
+
+/deps/glad/build/
+
+# Ignore log files
+*.log
+
+# Ignore shader binaries and cache
+shaders/*.bin
+
+# Ignore editor-specific settings
+/.idea/
+/.vscode/
+
+# Ignore executables
+*.exe
+*.out
+*.obj
+
+# Ignore temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*.DS_Store
+Thumbs.db
