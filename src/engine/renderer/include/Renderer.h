@@ -6,7 +6,7 @@ class Renderer
 public:
 	void Initialize()
 	{
-		static_cast<Derived*>(this)->Initialize();
+		static_cast<Derived*>(this)->InitializeImpl();
 	}
 
 	void Render()

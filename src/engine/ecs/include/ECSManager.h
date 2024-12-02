@@ -1,30 +1,53 @@
 #pragma once
 
 #include <unordered_map>
-#include <memory>
 #include <vector>
+#include <memory>
+#include <typeindex>
 #include "Entity.h"
-#include "Component.h"
 #include "System.h"
+#include "Component.h"
+#include "../../renderer/include/RenderSystem.h"
 
 class ECSManager
 {
 public:
 	Entity CreateEntity();
-	void DestroyEntity(Entity entity);
+	//void DestroyEntity(Entity entity);
 	
-	template <typename T, typename... Args>
-	void AddComponent(Entity entity, Args&&... args);
+
+	void AddComponent(Entity& entity, std::shared_ptr<Component> component)
+	{
+		entity.AddComponent(component);
+		for (auto& system : systems) {
+			system->OnComponentAdded(entity, component);
+			std::cout << "Component added to Entity ID: " << entity.GetID() << std::endl;
+		}
+	}
 
 	template <typename T>
 	T* GetComponent(Entity entity);
 
-	void AddSystem(std::shared_ptr<System> system);
+	template <typename T>
+	void AddSystem(std::shared_ptr<T> system)
+	{
+		systems.push_back(system);
+	}
+
+	void NotifyComponentAdded(Entity& entity, std::shared_ptr<Component> component)
+	{
+		for (auto& system : systems)
+		{
+			system->OnComponentAdded(entity, component);
+		}
+	}
+
 	std::vector<std::shared_ptr<System>>& GetSystems();
 	void UpdateSystems(float deltaTime);
 
 private:
-	Entity::IdType nextEntityId = 0;
-	std::unordered_map<Entity::IdType, std::vector<std::shared_ptr<Component>>> components;
+	std::vector<Entity> entities;
 	std::vector<std::shared_ptr<System>> systems;
+	std::unordered_map<std::type_index, std::unordered_map<int, std::shared_ptr<Component>>> components;
+	int nextEntityId = 0;
 };
