@@ -1,27 +1,39 @@
 #include "../include/Shader.h"
-#include <glad/glad.h>
-#include <fstream>
-#include <sstream>
-#include <iostream>
-#include <gtc/type_ptr.hpp>
 
-Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath, const std::string& binaryPath) 
-	: loadedFromCache(false)
+Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath, const std::string& cachePath)
+	: loadedFromCache(true), vertexShaderPath(vertexPath), fragmentShaderPath(fragmentPath)
 {
-	bool sourceChanged = ShaderSourceChanged(vertexPath, fragmentPath);
-	std::cout << "ShaderSourceChanged returned: " << sourceChanged << std::endl;
+	std::string vertexHashPath = cachePath + "_vertex.hash";
+	std::string fragmentHashPath = cachePath + "_fragment.hash";
 
-	if (sourceChanged || !LoadShaderBinary(binaryPath))
+	bool vertexChanged = ShaderSourceChanged(vertexPath, vertexHashPath);
+	bool fragmentChanged = ShaderSourceChanged(fragmentPath, fragmentHashPath);
+
+	if (vertexChanged || fragmentChanged || !LoadShadersFromBinary(cachePath))
 	{
+		if (vertexChanged)
+		{
+			CompileAndAttachShader(GL_VERTEX_SHADER, vertexPath);
+		}
+		if (fragmentChanged)
+		{
+			CompileAndAttachShader(GL_FRAGMENT_SHADER, fragmentPath);
+		}
+
+		if (LinkShaderProgram())
+		{
+			SaveShadersToBinary(cachePath);
+			std::cout << "Shader compiled from source.\n" << std::endl;
+			loadedFromCache = false;
+		}
 		// Load shader sources and create program
-		std::string vertexSource = LoadShaderSource(vertexPath);
-		std::string fragmentSource = LoadShaderSource(fragmentPath);
-		CreateShaderProgram(vertexSource, fragmentSource);
-		SaveShaderBinary(binaryPath);
-		std::cout << "Shader compiled from source.\n";
+		//std::string vertexSource = LoadShaderSource(vertexPath);
+		//std::string fragmentSource = LoadShaderSource(fragmentPath);
+		//CreateShaderProgram(vertexSource, fragmentSource);
+		//SaveShaderBinary(cachePath);
+		//std::cout << "Shader compiled from source.\n";
 	} else
 	{
-		loadedFromCache = true;
 		std::cout << "Shader loaded from cache.\n";
 	}
 }
@@ -41,7 +53,11 @@ std::string Shader::LoadShaderSource(const std::string& filepath)
 	}
 	std::stringstream buffer;
 	buffer << file.rdbuf();
-	return buffer.str();
+
+	std::string source = buffer.str();
+	source.erase(std::remove(source.begin(), source.end(), '\r'), source.end()); // Normalize line endings
+
+	return source;
 }
 
 unsigned int Shader::CompileShader(unsigned int type, const std::string& source)
@@ -85,47 +101,7 @@ void Shader::CreateShaderProgram(const std::string& vertexSource, const std::str
 	glDeleteShader(fragmentShader);
 }
 
-bool Shader::LoadShaderBinary(const std::string& binaryPath)
-{
-	std::cout << "Loading shader cache from: " << binaryPath << std::endl;
-	std::ifstream binaryFile(binaryPath, std::ios::binary);
-	if (!binaryFile.is_open())
-	{
-		return false;
-	}
 
-	// Get the size of the file
-	binaryFile.seekg(0, std::ios::end);
-	std::streamsize size = binaryFile.tellg();
-	binaryFile.seekg(0, std::ios::beg);
-
-	// Read the binary data
-	std::vector<char> buffer(size);
-	if (!binaryFile.read(buffer.data(), size))
-	{
-		std::cerr << "Failed to read shader binary file: " << binaryPath << std::endl;
-		return false;
-	}
-
-	GLenum format;
-	binaryFile.read(reinterpret_cast<char*>(&format), sizeof(format));
-
-	// Creat the program and load the binary
-	ID = glCreateProgram();
-	glProgramBinary(ID, format, buffer.data(), size);
-
-	// Check if loading was successful
-	GLint success;
-	glGetProgramiv(ID, GL_LINK_STATUS, &success);
-	if (!success) {
-		char infoLog[512];
-		glGetProgramInfoLog(ID, 512, nullptr, infoLog);
-		std::cerr << "ERROR::SHADER::BINARY::LINKING_FAILED\n" << infoLog << std::endl;
-		return false;
-	}
-
-	return true;
-}
 
 void Shader::SaveShaderBinary(const std::string& binaryPath)
 {
@@ -148,39 +124,179 @@ void Shader::SaveShaderBinary(const std::string& binaryPath)
 	binaryFile.write(binary.data(), binaryLength);
 }
 
-bool Shader::ShaderSourceChanged(const std::string& vertexPath, const std::string& fragmentPath)
+bool Shader::ShaderSourceChanged(const std::string& shaderPath, const std::string& hashPath)
 {
 	std::hash<std::string> hasher;
 
-	// Get hash of vertex shader source
-	std::string vertexSource = LoadShaderSource(vertexPath);
-	size_t vertexHash = hasher(vertexSource);
+	// Load shader source and calculate hash
+	std::string shaderSource = LoadShaderSource(shaderPath);
+	size_t shaderHash = hasher(shaderSource);
 
-	// Get hash of fragment shader source
-	std::string fragmentSource = LoadShaderSource(fragmentPath);
-	size_t fragmentHash = hasher(fragmentSource);
-
-	// Combine hashes for a simple cache validation mechanism
-	size_t combinedHash = vertexHash ^ (fragmentHash << 1);
-
-	// Check if there is a hash file, or if the hash is different
-	std::ifstream hashFile("shader_hash.hash");
-	if (!hashFile.is_open()) {
-		std::ofstream newHashFile("shader_hash.hash");
-		newHashFile << combinedHash;
-		return true;  // No hash file means shader needs recompiling
+	// Try to read the existing hash from the binary hash file
+	size_t oldHash = 0;
+	std::ifstream hashFile(hashPath, std::ios::binary);
+	if (hashFile.is_open()) 
+	{
+		hashFile.read(reinterpret_cast<char*>(&oldHash), sizeof(size_t));
 	}
 
-	size_t oldHash;
-	hashFile >> oldHash;
-
-	if (oldHash != combinedHash) {
-		std::ofstream newHashFile("shader_hash.txt");
-		newHashFile << combinedHash;
-		return true;  // Hash mismatch means shader source has changed
+	// Compare the old hash with the new one
+	if (shaderHash != oldHash) 
+	{
+		// Save the new hash to the binary hash file
+		std::ofstream hashOutFile(hashPath, std::ios::binary);
+		if (!hashOutFile.is_open()) 
+		{
+			std::cerr << "Failed to open file for writing shader hash: " << hashPath << std::endl;
+		}
+		else 
+		{
+			hashOutFile.write(reinterpret_cast<const char*>(&shaderHash), sizeof(size_t));
+		}
+		return true; // Shader source changed
 	}
 
-	return false; // Hash match means shader source is unchanged
+	return false; // No change in shader source
+}
+
+bool Shader::LinkShaderProgram()
+{
+	ID = glCreateProgram();
+
+	// Attach compiled or loaded shaders
+	for (const auto& [shaderType, shaderID] : compiledShaderIDs)
+	{
+		glAttachShader(ID, shaderID);
+	}
+
+	glLinkProgram(ID);
+
+	GLint success = 0;
+	glGetProgramiv(ID, GL_LINK_STATUS, &success);
+	if (!success)
+	{
+		char infoLog[512];
+		glGetProgramInfoLog(ID, 512, nullptr, infoLog);
+		std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+
+		// Recompile the shaders if linking failed
+		for (const auto& [shaderType, shaderID] : compiledShaderIDs)
+		{
+			glDeleteShader(shaderID);
+		}
+		compiledShaderIDs.clear();
+
+		std::cout << "Attempting to recompile shaders due to linking failure.\n";
+
+		// Recompile shaders from source
+		CompileAndAttachShader(GL_VERTEX_SHADER, vertexShaderPath);  // Replace with your path variables
+		CompileAndAttachShader(GL_FRAGMENT_SHADER, fragmentShaderPath);
+
+		glLinkProgram(ID);
+		glGetProgramiv(ID, GL_LINK_STATUS, &success);
+		if (!success)
+		{
+			glGetProgramInfoLog(ID, 512, nullptr, infoLog);
+			std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED after recompilation\n" << infoLog << std::endl;
+			return false;
+		}
+	}
+
+	// Clean up individual shader objects after linking
+	for (const auto& [shaderType, shaderID] : compiledShaderIDs)
+	{
+		glDeleteShader(shaderID);
+	}
+
+	compiledShaderIDs.clear();
+
+	return true;
+}
+
+void Shader::CompileAndAttachShader(GLenum shaderType, const std::string& shaderPath)
+{
+	std::string shaderSource = LoadShaderSource(shaderPath);
+	unsigned int shaderID = CompileShader(shaderType, shaderSource);
+	compiledShaderIDs[shaderType] = shaderID;
+}
+
+bool Shader::LoadShadersFromBinary(const std::string& binaryPath)
+{
+	GLint numFormats = 0;
+	glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS, &numFormats);
+	if (numFormats == 0)
+	{
+		std::cerr << "No supported program binary formats found on this system." << std::endl;
+		return false; // Indicates shader binary is not supported
+	}
+
+	std::ifstream binaryFile(binaryPath, std::ios::binary);
+	if (!binaryFile.is_open()) {
+		std::cerr << "Failed to open shader cache binary file: " << binaryPath << std::endl;
+		return false;
+	}
+
+	while (binaryFile.peek() != EOF)
+	{
+		GLenum shaderType;
+		binaryFile.read(reinterpret_cast<char*>(&shaderType), sizeof(shaderType));
+
+		GLenum format;
+		binaryFile.read(reinterpret_cast<char*>(&format), sizeof(format));
+
+		GLint binaryLength;
+		binaryFile.read(reinterpret_cast<char*>(&binaryLength), sizeof(binaryLength));
+
+		std::vector<char> binary(binaryLength);
+		if (!binaryFile.read(binary.data(), binaryLength)) {
+			std::cerr << "Failed to read shader binary data from cache." << std::endl;
+			return false;
+		}
+
+		unsigned int shaderID = glCreateShader(shaderType);
+		glShaderBinary(1, &shaderID, format, binary.data(), binaryLength);
+
+		// Check for errors after loading the binary
+		GLenum error = glGetError();
+		if (error != GL_NO_ERROR) {
+			std::cerr << "OpenGL Error after glShaderBinary: " << error << std::endl;
+			return false;
+		}
+
+		compiledShaderIDs[shaderType] = shaderID;
+	}
+
+	// Link the program again to ensure all uniforms are correctly registered
+	if (!LinkShaderProgram()) {
+		std::cerr << "Failed to link shader program from binary. Falling back to source compilation." << std::endl;
+		return false;
+	}
+
+	return true;
+}
+
+void Shader::SaveShadersToBinary(const std::string& binaryPath)
+{
+	std::ofstream binaryFile(binaryPath, std::ios::binary);
+	if (!binaryFile.is_open()) {
+		std::cerr << "Failed to open file for writing shader cache: " << binaryPath << std::endl;
+		return;
+	}
+
+	for (const auto& [shaderType, shaderID] : compiledShaderIDs)
+	{
+		GLint binaryLength;
+		glGetShaderiv(shaderID, GL_PROGRAM_BINARY_LENGTH, &binaryLength);
+		std::vector<char> binary(binaryLength);
+
+		GLenum format;
+		glGetProgramBinary(shaderID, binaryLength, nullptr, &format, binary.data());
+
+		binaryFile.write(reinterpret_cast<const char*>(&shaderType), sizeof(shaderType));
+		binaryFile.write(reinterpret_cast<const char*>(&format), sizeof(format));
+		binaryFile.write(reinterpret_cast<const char*>(&binaryLength), sizeof(binaryLength));
+		binaryFile.write(binary.data(), binaryLength);
+	}
 }
 
 void Shader::Use() const
@@ -213,11 +329,16 @@ int Shader::GetUniformLocation(const std::string& name) const
 	auto it = uniformLocationCache.find(name);
 	if (it != uniformLocationCache.end())
 	{
-		return it->second; // Return the cached uniform location
+		return it->second;
 	}
-	int location = glGetUniformLocation(ID, name.c_str());
-	uniformLocationCache.insert({ name, location }); // Insert the new location into the cache
 
+	int location = glGetUniformLocation(ID, name.c_str());
+	if (location == -1)
+	{
+		std::cerr << "Warning: Uniform '" << name << "' not found in the shader." << std::endl;
+	}
+
+	uniformLocationCache[name] = location;
 	return location;
 }
 

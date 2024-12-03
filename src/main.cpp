@@ -116,7 +116,7 @@ int main()
   auto shaderComponent = std::make_shared<ShaderComponent>(
     "D:/Dev/3DEngine/src/shaders/vertex_shader.glsl",
     "D:/Dev/3DEngine/src/shaders/fragment_shader.glsl",
-    "D:/Dev/3DEngine/src/shaders/shader_cache.bin"
+    "D:/Dev/3DEngine/src/shaders/shader_cache"
   );
   entity.AddComponent(shaderComponent);
 
