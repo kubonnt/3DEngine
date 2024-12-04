@@ -26,13 +26,18 @@ Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath, c
 			std::cout << "Shader compiled from source.\n" << std::endl;
 			loadedFromCache = false;
 		}
+		else
+		{
+			std::cerr << "Shader failed to compile and link from source.\n";
+		}
 		// Load shader sources and create program
 		//std::string vertexSource = LoadShaderSource(vertexPath);
 		//std::string fragmentSource = LoadShaderSource(fragmentPath);
 		//CreateShaderProgram(vertexSource, fragmentSource);
 		//SaveShaderBinary(cachePath);
 		//std::cout << "Shader compiled from source.\n";
-	} else
+	} 
+	else
 	{
 		std::cout << "Shader loaded from cache.\n";
 	}
@@ -231,6 +236,52 @@ bool Shader::LoadShadersFromBinary(const std::string& binaryPath)
 	}
 
 	std::ifstream binaryFile(binaryPath, std::ios::binary);
+	if (!binaryFile.is_open()) 
+	{
+		std::cerr << "Failed to open shader cache binary file: " << binaryPath << std::endl;
+		return false;
+	}
+
+	GLenum format;
+	binaryFile.read(reinterpret_cast<char*>(&format), sizeof(format));
+
+	GLint binaryLength;
+	binaryFile.read(reinterpret_cast<char*>(&binaryLength), sizeof(binaryLength));
+
+	std::vector<char> binary(binaryLength);
+	if (!binaryFile.read(binary.data(), binaryLength)) 
+	{
+		std::cerr << "Failed to read shader binary data from cache." << std::endl;
+		return false;
+	}
+
+	ID = glCreateProgram();
+	glProgramBinary(ID, format, binary.data(), binaryLength);
+
+	// Check if loading was successful
+	GLint success = 0;
+	glGetProgramiv(ID, GL_LINK_STATUS, &success);
+	if (!success)
+	{
+		char infoLog[512];
+		glGetProgramInfoLog(ID, 512, nullptr, infoLog);
+		std::cerr << "ERROR::SHADER::BINARY::LINKING_FAILED\n" << infoLog << std::endl;
+		return false;
+	}
+
+	std::cout << "Shader program successfully loaded from binary.\n";
+	return true;
+
+	/*
+	GLint numFormats = 0;
+	glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS, &numFormats);
+	if (numFormats == 0)
+	{
+		std::cerr << "No supported program binary formats found on this system." << std::endl;
+		return false; // Indicates shader binary is not supported
+	}
+
+	std::ifstream binaryFile(binaryPath, std::ios::binary);
 	if (!binaryFile.is_open()) {
 		std::cerr << "Failed to open shader cache binary file: " << binaryPath << std::endl;
 		return false;
@@ -273,16 +324,32 @@ bool Shader::LoadShadersFromBinary(const std::string& binaryPath)
 	}
 
 	return true;
+	*/
 }
 
 void Shader::SaveShadersToBinary(const std::string& binaryPath)
 {
+	GLint binaryLength;
+	glGetProgramiv(ID, GL_PROGRAM_BINARY_LENGTH, &binaryLength);
+	std::vector<char> binary(binaryLength);
+
+	GLenum format;
+	glGetProgramBinary(ID, binaryLength, nullptr, &format, binary.data());
+
 	std::ofstream binaryFile(binaryPath, std::ios::binary);
 	if (!binaryFile.is_open()) {
 		std::cerr << "Failed to open file for writing shader cache: " << binaryPath << std::endl;
 		return;
 	}
 
+	// Write the format and binary data to the file
+	binaryFile.write(reinterpret_cast<const char*>(&format), sizeof(format));
+	binaryFile.write(reinterpret_cast<const char*>(&binaryLength), sizeof(binaryLength));
+	binaryFile.write(binary.data(), binaryLength);
+
+	std::cout << "Shader binary successfully saved to: " << binaryPath << std::endl;
+
+	/*
 	for (const auto& [shaderType, shaderID] : compiledShaderIDs)
 	{
 		GLint binaryLength;
@@ -297,6 +364,8 @@ void Shader::SaveShadersToBinary(const std::string& binaryPath)
 		binaryFile.write(reinterpret_cast<const char*>(&binaryLength), sizeof(binaryLength));
 		binaryFile.write(binary.data(), binaryLength);
 	}
+	*/
+
 }
 
 void Shader::Use() const
