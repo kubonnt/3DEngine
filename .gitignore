@@ -43,3 +43,5 @@ shaders/*.bin
 *.swo
 *.DS_Store
 Thumbs.db
+
+.env

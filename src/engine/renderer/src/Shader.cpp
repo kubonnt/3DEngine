@@ -23,7 +23,7 @@ Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath, c
 		if (LinkShaderProgram())
 		{
 			SaveShadersToBinary(cachePath);
-			std::cout << "Shader compiled from source.\n" << std::endl;
+			std::cout << "Shader compiled from source.\n" << vertexPath << fragmentPath << std::endl;
 			loadedFromCache = false;
 		}
 		else
@@ -39,7 +39,7 @@ Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath, c
 	} 
 	else
 	{
-		std::cout << "Shader loaded from cache.\n";
+		std::cout << "Shader loaded from cache.\n" << cachePath << std::endl;;
 	}
 }
 
